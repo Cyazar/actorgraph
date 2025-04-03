@@ -1,7 +1,10 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
 
-// https://vite.dev/config/
+// Replace with your GitHub repo name
+const repoName = "actorgraph";
+
 export default defineConfig({
+  base: `/${repoName}/`,
   plugins: [react()],
-})
+});
