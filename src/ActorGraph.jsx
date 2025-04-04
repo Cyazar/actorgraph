@@ -1,12 +1,12 @@
 import ForceGraph2D from "react-force-graph-2d";
 import { useRef, useEffect, useMemo, useState } from "react";
 import SharedMoviesModal from './SharedMoviesModal';
-
+import * as d3 from 'd3';
 
 export default function ActorGraph({ actor, colleagues, height, onSelectActor, allMovies }) {
   const fgRef = useRef();
   const clickTimeout = useRef(null);
-  const minDistance = 80;
+  const minDistance = 60;
   const btwMinDistance = 20;
   const btwMaxDistance = 50;
   const [modalOpen, setModalOpen] = useState(false);
@@ -67,6 +67,11 @@ export default function ActorGraph({ actor, colleagues, height, onSelectActor, a
     if (fgRef.current) {
       fgRef.current.d3Force("link").distance((link) => link.distance);
       fgRef.current.d3ReheatSimulation();
+      fgRef.current.d3Force('collision', d3.forceCollide(node => {
+        const size = node.main ? 12 : Math.min(4 + (node.count || 1) * 3, 20);
+        return size + 10; // add small buffer
+      }));
+    
     }
   }, [nodes, links]);
 
@@ -153,11 +158,11 @@ export default function ActorGraph({ actor, colleagues, height, onSelectActor, a
           }
         
           // Draw label below
-          ctx.font = `${fontSize}px Sans-Serif`;
-          ctx.textAlign = "center";
-          ctx.textBaseline = "top";
-          ctx.fillStyle = "#000";
-          ctx.fillText(node.name, node.x, node.y + radius + 4);
+          // ctx.font = `${fontSize}px Sans-Serif`;
+          // ctx.textAlign = "center";
+          // ctx.textBaseline = "top";
+          // ctx.fillStyle = "#000";
+          // ctx.fillText(node.name, node.x, node.y + radius + 4);
         }}
         
       />

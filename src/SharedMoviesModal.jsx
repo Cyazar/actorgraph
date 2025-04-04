@@ -67,6 +67,11 @@ export default function SharedMoviesModal({ open, onOpenChange, mainActor,
             <Dialog.Close asChild>
               <button className="close-button">Close</button>
             </Dialog.Close>
+            <Dialog.Close asChild>
+              <button className="modal-close-button" aria-label="Close">
+                &times;
+              </button>
+            </Dialog.Close>
           </div>
         </Dialog.Content>
       </Dialog.Portal>

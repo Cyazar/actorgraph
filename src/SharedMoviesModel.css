@@ -124,4 +124,20 @@
     text-decoration: underline;
     color: #005999;
   }
+  .modal-close-button {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    font-size: 1.5rem;
+    font-weight: bold;
+    background: transparent;
+    border: none;
+    color: #999;
+    cursor: pointer;
+    transition: color 0.2s ease;
+  }
+  
+  .modal-close-button:hover {
+    color: #000;
+  }
   
