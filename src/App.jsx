@@ -34,9 +34,22 @@ function App() {
     const value = e.target.value;
     setQuery(value);
     if (value.length > 2) {
-      const data = await searchActors(value);
-      const fuse = new Fuse(data, { keys: ["name"], threshold: 0.3 });
-      setResults(fuse.search(value).map((r) => r.item));
+      const data = await searchActors(value, 2);
+
+      const filtered = data.filter(actor => {
+        // Keep only names with at least two words
+        return actor.name.trim().split(" ").length > 1;
+      });
+      // Filter out actors without profile pictures
+      const withPhotos = filtered.filter(actor => actor.profile_path);
+      // Sort by popularity (highest first)
+      const fuse = new Fuse(withPhotos, { keys: ['name'], threshold: 0.3 });
+      const fuzzyResults = fuse.search(value).map(r => r.item);
+      
+      // Then sort by popularity
+      fuzzyResults.sort((a, b) => b.popularity - a.popularity);
+      
+      setResults(fuzzyResults.slice(0, 5));
     } else {
       setResults([]);
     }
@@ -51,7 +64,13 @@ function App() {
       setSelectedActorId(actorId);
       setQuery(details.name);
       setAllMovies(movies); // 👈 store all movies once
-  
+      
+      if (details.profile_path) {
+        const img = new Image();
+        img.src = `https://image.tmdb.org/t/p/w185${details.profile_path}`;
+        details.image = img;
+      }
+
       const years = movies
         .map(m => parseInt(m.release_date?.split("-")[0]))
         .filter(y => !isNaN(y));
@@ -68,60 +87,13 @@ function App() {
   }, []);
   
   
-  const handleSelect = useCallback(async (actor) => {
-    try{
-
-      const details = await getActorDetails(actor.id);
-      const movies = details.movie_credits.cast || [];
-      setSelectedActor(details);
-      setSelectedActorId(actor.id);
-      setQuery(details.name);
-      setAllMovies(movies); // 👈 store all movies once
+  const handleSelect = async (actor) => {
+    setQuery(actor.name);         // fill search input
+    setResults([]);               // ✅ clear suggestions
+    setSelectedActorId(actor.id); // store ID
+    await handleSelectById(actor.id); // load graph data
+  };
   
-      const years = movies
-        .map(m => parseInt(m.release_date?.split("-")[0]))
-        .filter(y => !isNaN(y));
-      if (years.length) {
-        const minYear = Math.min(...years);
-        const maxYear = Math.max(...years);
-        setAvailableYears([minYear, maxYear]);
-        setYearRange([minYear, maxYear]); // reset slider
-      }
-
-    // const coStarCounts = new Map();
-
-    // for (const movie of movies) { // limit to 10 movies to reduce API hits
-    //   const year = parseInt(movie.release_date?.split("-")[0]);
-    //   if (isNaN(year) || year < yearRange[0] || year > yearRange[1]) {
-    //     continue;
-    //   }
-    //   const movieDetails = await fetch(
-    //     `https://api.themoviedb.org/3/movie/${movie.id}/credits?api_key=${import.meta.env.VITE_TMDB_API_KEY}`
-    //   );
-    //   const credits = await movieDetails.json();
-    //   credits.cast.forEach((person) => {
-    //     if (person.id !== actor.id) {
-    //       const existing = coStarCounts.get(person.id);
-    //       if (existing) {
-    //         existing.count += 1;
-    //       } else {
-    //         coStarCounts.set(person.id, { ...person, count: 1 });
-    //       }
-    //     }
-    //   });
-  //   }
-    
-  // // 🔢 Sort by shared movie count and take top 100
-  // const sortedCoStars = Array.from(coStarCounts.values())
-  //   .sort((a, b) => b.count - a.count)
-  //   .slice(0, 100);
-
-  // setColleagues(sortedCoStars);
-  
-    } catch (err) {
-      console.error("Error loading actor:", err);
-    }
-  }, []);
   
   useEffect(() => {
     const fetchColleagues = async () => {
@@ -151,9 +123,16 @@ function App() {
       }
   
       const sortedCoStars = Array.from(coStarCounts.values())
+        .filter(co => co.profile_path)
         .sort((a, b) => b.count - a.count)
         .slice(0, 100);
-  
+      sortedCoStars.forEach((co) => {
+        if (co.profile_path) {
+          const img = new Image();
+          img.src = `https://image.tmdb.org/t/p/w185${co.profile_path}`;
+          co.image = img;
+        }
+      });
       setColleagues(sortedCoStars);
     };
   
@@ -161,14 +140,14 @@ function App() {
   }, [yearRange, selectedActorId, allMovies]);
   
 
-
+  
 
   return (
     <div style={{ width: "100vw", height: "100vh", display: "flex", flexDirection: "column" }}>
       <div style={{ padding: "10px" }}>
         <input
           type="text"
-          placeholder="Search actors/actresses..."
+          placeholder="Search actors..."
           value={query}
           onChange={handleSearch}
           style={{ width: "100%", padding: "10px", fontSize: "16px" }}
@@ -192,20 +171,57 @@ function App() {
         </Box>
 
 
-        <ul>
-          {results.map((actor) => (
-            <li key={actor.id} onClick={() => handleSelect(actor)} style={{ cursor: "pointer" }}>
-              {actor.name}
+        <ul style={{ listStyle: 'none', padding: 0 }}>
+          {results.map(actor => (
+            <li
+              key={actor.id}
+              onClick={() => handleSelect(actor)}
+              style={{
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                padding: "6px 10px",
+                borderBottom: "1px solid #eee"
+              }}
+            >
+              {actor.profile_path ? (
+                <img
+                  src={`https://image.tmdb.org/t/p/w92${actor.profile_path}`}
+                  alt={actor.name}
+                  style={{ width: 40, height: 60, objectFit: 'cover', borderRadius: 4, marginRight: 10 }}
+                />
+              ) : (
+                <div
+                  style={{
+                    width: 40,
+                    height: 60,
+                    marginRight: 10,
+                    background: "#ccc",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 10,
+                    borderRadius: 4,
+                    color: "#555"
+                  }}
+                >
+                  N/A
+                </div>
+              )}
+              <span>{actor.name}</span>
             </li>
           ))}
         </ul>
+
       </div>
       <div style={{ flex: 1 }} ref={graphContainerRef}>
+      
       <ActorGraph
         actor={selectedActor}
         colleagues={colleagues}
         height={graphHeight}
         onSelectActor={handleSelectById}
+        allMovies={allMovies}
       />
       </div>
     </div>

@@ -1,15 +1,31 @@
 import ForceGraph2D from "react-force-graph-2d";
-import { useRef, useEffect, useMemo } from "react";
+import { useRef, useEffect, useMemo, useState } from "react";
+import SharedMoviesModal from './SharedMoviesModal';
 
-export default function ActorGraph({ actor, colleagues, height, onSelectActor }) {
+
+export default function ActorGraph({ actor, colleagues, height, onSelectActor, allMovies }) {
   const fgRef = useRef();
-
+  const clickTimeout = useRef(null);
   const minDistance = 80;
   const btwMinDistance = 20;
   const btwMaxDistance = 50;
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedNode, setSelectedNode] = useState(null);
+  const [sharedMovies, setSharedMovies] = useState([]);
 
   // Find the max count among co-stars
   const maxCount = Math.max(...colleagues.map(c => c.count || 1), 1);
+
+  const fetchSharedMovies = async (targetId) => {
+    const response = await fetch(
+      `https://api.themoviedb.org/3/person/${targetId}/movie_credits?api_key=${import.meta.env.VITE_TMDB_API_KEY}`
+    );
+    const targetCredits = await response.json();
+    const targetMovies = targetCredits.cast.map((m) => m.id);
+  
+    const shared = allMovies.filter((movie) => targetMovies.includes(movie.id));
+    return shared;
+  };
 
   // Memoize node/link data only when actor/colleagues change
   const { nodes, links } = useMemo(() => {
@@ -67,8 +83,29 @@ export default function ActorGraph({ actor, colleagues, height, onSelectActor })
             : `${node.name} — ${node.count || 1} shared movie(s)`
         }
         onNodeClick={(node) => {
-          if (!node.main) {
-            onSelectActor(node.id); // 👈 Trigger selection by ID
+          // Cancel existing click if it's a double-click
+          if (clickTimeout.current) {
+            clearTimeout(clickTimeout.current);
+            clickTimeout.current = null;
+      
+            // 🔁 Double-click: update selected actor
+            if (!node.main) {
+              onSelectActor(node.id);
+            }
+          } else {
+            // ⏱️ Single-click: wait to see if it's a double-click
+            clickTimeout.current = setTimeout(() => {
+              (async () => {
+                clickTimeout.current = null;
+
+                if (!node.main) {
+                  const shared = await fetchSharedMovies(node.id);
+                  setSelectedNode(node);
+                  setSharedMovies(shared);
+                  setModalOpen(true);
+                }
+              })();
+            }, 250); // ~250ms window for detecting double click
           }
         }}
         backgroundColor="#f1faee"
@@ -124,6 +161,15 @@ export default function ActorGraph({ actor, colleagues, height, onSelectActor })
         }}
         
       />
+      <SharedMoviesModal
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        mainActor={actor}
+        coActor={selectedNode}
+        sharedMovies={sharedMovies}
+      />
+
+
     </div>
   );
 }

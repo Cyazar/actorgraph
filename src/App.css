@@ -1,3 +1,5 @@
+@import "tailwindcss";
+
 #root {
   max-width: 1280px;
   margin: 0 auto;
@@ -39,4 +41,25 @@
 
 .read-the-docs {
   color: #888;
+}
+
+/* Make sure Dialog.Portal shows */
+body {
+  position: relative;
+  font-family: sans-serif;
+}
+
+.radix-overlay {
+  background-color: rgba(0, 0, 0, 0.5);
+  position: fixed;
+  inset: 0;
+}
+
+.radix-content {
+  background: white;
+  border-radius: 10px;
+  padding: 1.5rem;
+  max-width: 500px;
+  margin: 100px auto;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.2);
 }
