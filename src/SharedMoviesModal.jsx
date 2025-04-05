@@ -1,5 +1,6 @@
 import * as Dialog from '@radix-ui/react-dialog';
 import './SharedMoviesModel.css'; // import your styles
+import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
 
 export default function SharedMoviesModal({ open, onOpenChange, mainActor,
                                             coActor, sharedMovies }) {
@@ -8,6 +9,8 @@ export default function SharedMoviesModal({ open, onOpenChange, mainActor,
       <Dialog.Portal>
         <Dialog.Overlay className="modal-overlay" />
         <Dialog.Content className="modal-content">
+          <Dialog.Title> <VisuallyHidden.Root>"Movies"</VisuallyHidden.Root></Dialog.Title>
+       
         <div className="actor-photos">
         {mainActor && (
           <div className="actor">

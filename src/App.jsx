@@ -17,6 +17,8 @@ function App() {
   const [availableYears, setAvailableYears] = useState([1980, 2025]); // dynamic min/max
   const [selectedActorId, setSelectedActorId] = useState(null);
   const [allMovies, setAllMovies] = useState([]);
+  const [loading, setLoading] = useState(false);
+
 
   
   useEffect(() => {
@@ -56,6 +58,11 @@ function App() {
   };
 
   const handleSelectById = useCallback(async (actorId) => {
+    setColleagues([]);  // removes old co-stars
+    setAllMovies([]);   // (optional) clear shared movie data
+    setSelectedActor(null); // (optional) clear previous actor temporarily
+
+    if (loading) return;
     try {
       const details = await getActorDetails(actorId);
       const movies = details.movie_credits.cast || [];
@@ -214,14 +221,23 @@ function App() {
         </ul>
 
       </div>
-      <div style={{ flex: 1 }} ref={graphContainerRef}>
       
+
+      <div style={{ flex: 1 }} ref={graphContainerRef}>
+        
+      {loading && (
+        <div className="loading-overlay">
+          <div className="spinner" />
+          <p>Loading graph...</p>
+        </div>
+      )}
       <ActorGraph
         actor={selectedActor}
         colleagues={colleagues}
         height={graphHeight}
         onSelectActor={handleSelectById}
         allMovies={allMovies}
+        setLoading={setLoading}
       />
       </div>
     </div>

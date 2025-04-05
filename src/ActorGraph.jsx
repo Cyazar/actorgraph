@@ -3,7 +3,7 @@ import { useRef, useEffect, useMemo, useState } from "react";
 import SharedMoviesModal from './SharedMoviesModal';
 import * as d3 from 'd3';
 
-export default function ActorGraph({ actor, colleagues, height, onSelectActor, allMovies }) {
+export default function ActorGraph({ actor, colleagues, height, onSelectActor, allMovies, setLoading }) {
   const fgRef = useRef();
   const clickTimeout = useRef(null);
   const minDistance = 60;
@@ -134,14 +134,22 @@ export default function ActorGraph({ actor, colleagues, height, onSelectActor, a
             }
         
             const img = imageCache[node.image];
-            if (img.complete) {
+            if (img.complete && img.naturalWidth !== 0) {
               ctx.save();
-              ctx.beginPath();
-              ctx.arc(node.x, node.y, radius, 0, 2 * Math.PI, false);
-              ctx.closePath();
-              ctx.clip();
-              ctx.drawImage(img, node.x - radius, node.y - radius, radius * 2, radius * 2);
-              ctx.restore();
+              try {
+                
+                ctx.beginPath();
+                ctx.arc(node.x, node.y, radius, 0, 2 * Math.PI, false);
+                ctx.closePath();
+                ctx.clip();
+                ctx.drawImage(img, node.x - radius, node.y - radius, radius * 2, radius * 2);
+                
+              } catch (err) {
+                console.error("Error loading actor:", err);
+              } finally {
+                ctx.restore();
+              }
+
             } else {
               // fallback while loading
               ctx.beginPath();
@@ -164,6 +172,8 @@ export default function ActorGraph({ actor, colleagues, height, onSelectActor, a
           // ctx.fillStyle = "#000";
           // ctx.fillText(node.name, node.x, node.y + radius + 4);
         }}
+        onEngineStop={() => setLoading?.(false)}
+        onEngineStart={() => setLoading?.(true)}
         
       />
       <SharedMoviesModal
