@@ -21,9 +21,11 @@ export default function SharedMoviesModal({ open, onOpenChange, mainActor,
             <div className="actor-name">{mainActor.name}</div>
           </div>
         )}
-          <span className="versus">⇄</span>
+          {coActor && (<span className="versus">⇄</span>)}
         {coActor && (
+          
           <div className="actor">
+            
             <img
               src={`https://image.tmdb.org/t/p/w185${coActor.image}`}
               alt={coActor.name}
@@ -33,10 +35,11 @@ export default function SharedMoviesModal({ open, onOpenChange, mainActor,
         )}
         </div>
 
-
+        {coActor && (
           <Dialog.Description className="modal-description">
             These are the movies both actors appeared in together.
           </Dialog.Description>
+        )}
 
           {sharedMovies.length > 0 ? (
             <ul className="movie-list">

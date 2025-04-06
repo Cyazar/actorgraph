@@ -1,0 +1,47 @@
+.timeline-container {
+    display: flex;
+    overflow-x: auto;
+    
+    gap: 12px;
+    padding: 1rem;
+    border-top: 1px solid #ccc;
+    background-color: var(--bg-color);
+  }
+  
+  .timeline-item {
+    min-width: 120px;
+    text-align: center;
+    font-size: 0.9rem;
+    color: var(--text-color);
+  }
+  
+  .timeline-poster {
+    width: 100%;
+    border-radius: 6px;
+    object-fit: cover;
+    height: 180px;
+    margin-bottom: 0.5rem;
+  }
+  
+  .timeline-year {
+    font-weight: bold;
+    margin-bottom: 0.25rem;
+  }
+  
+  .timeline-title {
+    font-size: 0.8rem;
+  }
+  .timeline-item {
+    display: block;
+    min-width: 120px;
+    text-align: center;
+    font-size: 0.9rem;
+    color: var(--text-color);
+    text-decoration: none;
+  }
+  
+  .timeline-item:hover {
+    text-decoration: underline;
+    color: #0077cc;
+  }
+  

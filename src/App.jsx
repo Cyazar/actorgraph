@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import Fuse from "fuse.js";
-import { searchActors, getActorDetails } from "./api";
+import { searchActors, getActorDetails, getMovieCredits } from "./api";
 import ActorGraph from "./ActorGraph";
+import MovieTimeline from "./MovieTimeline";
 import Slider from '@mui/material/Slider';
 import Box from '@mui/material/Box';
 import { useCallback } from "react";
@@ -12,13 +13,16 @@ function App() {
   const [selectedActor, setSelectedActor] = useState(null);
   const [colleagues, setColleagues] = useState([]);
   const graphContainerRef = useRef(null);
-  const [graphHeight, setGraphHeight] = useState(400);
+  const [graphHeight, setGraphHeight] = useState(800);
   const [yearRange, setYearRange] = useState([1980, 2025]);       // selected range
   const [availableYears, setAvailableYears] = useState([1980, 2025]); // dynamic min/max
   const [selectedActorId, setSelectedActorId] = useState(null);
   const [allMovies, setAllMovies] = useState([]);
   const [loading, setLoading] = useState(false);
-
+  const [darkMode, setDarkMode] = useState(() => {
+    // Get preference from localStorage if available
+    return localStorage.getItem('theme') === 'dark';
+  });
 
   
   useEffect(() => {
@@ -31,6 +35,11 @@ function App() {
     if (graphContainerRef.current) observer.observe(graphContainerRef.current);
     return () => observer.disconnect();
   }, []);
+  
+  useEffect(() => {
+    document.body.classList.toggle('dark-mode', darkMode);
+    localStorage.setItem('theme', darkMode ? 'dark' : 'light');
+  }, [darkMode]);
 
   const handleSearch = async (e) => {
     const value = e.target.value;
@@ -65,8 +74,10 @@ function App() {
     if (loading) return;
     try {
       const details = await getActorDetails(actorId);
-      const movies = details.movie_credits.cast || [];
-  
+      
+      var movies = details.movie_credits.cast || [];
+      console.log(movies)
+      movies.sort((a,b) => Number(b.release_date?.split('-')[0]) - Number(a.release_date?.split('-')[0]))
       setSelectedActor(details);
       setSelectedActorId(actorId);
       setQuery(details.name);
@@ -112,10 +123,7 @@ function App() {
         const year = parseInt(movie.release_date?.split("-")[0]);
         if (isNaN(year) || year < yearRange[0] || year > yearRange[1]) continue;
   
-        const response = await fetch(
-          `https://api.themoviedb.org/3/movie/${movie.id}/credits?api_key=${import.meta.env.VITE_TMDB_API_KEY}`
-        );
-        const credits = await response.json();
+        const credits = await getMovieCredits(movie.id)
   
         credits.cast.forEach((person) => {
           if (person.id !== selectedActorId) {
@@ -152,6 +160,11 @@ function App() {
   return (
     <div style={{ width: "100vw", height: "100vh", display: "flex", flexDirection: "column" }}>
       <div style={{ padding: "10px" }}>
+      <header style={{ padding: '1rem', display: 'flex', justifyContent: 'flex-end' }}>
+        <button onClick={() => setDarkMode(!darkMode)}>
+          {darkMode ? '🌞 Light Mode' : '🌙 Dark Mode'}
+        </button>
+      </header>
         <input
           type="text"
           placeholder="Search actors..."
@@ -176,6 +189,7 @@ function App() {
             ]}
           />
         </Box>
+        
 
 
         <ul style={{ listStyle: 'none', padding: 0 }}>
@@ -220,11 +234,13 @@ function App() {
           ))}
         </ul>
 
+        <MovieTimeline movies={allMovies} />
       </div>
+      
       
 
       <div style={{ flex: 1 }} ref={graphContainerRef}>
-        
+
       {loading && (
         <div className="loading-overlay">
           <div className="spinner" />
@@ -238,6 +254,7 @@ function App() {
         onSelectActor={handleSelectById}
         allMovies={allMovies}
         setLoading={setLoading}
+        darkMode={darkMode}
       />
       </div>
     </div>

@@ -1,9 +1,11 @@
 import ForceGraph2D from "react-force-graph-2d";
 import { useRef, useEffect, useMemo, useState } from "react";
+import { getActorDetails } from "./api";
 import SharedMoviesModal from './SharedMoviesModal';
+import './Theme.css'
 import * as d3 from 'd3';
 
-export default function ActorGraph({ actor, colleagues, height, onSelectActor, allMovies, setLoading }) {
+export default function ActorGraph({ actor, colleagues, height, onSelectActor, allMovies, setLoading, darkMode }) {
   const fgRef = useRef();
   const clickTimeout = useRef(null);
   const minDistance = 60;
@@ -17,11 +19,8 @@ export default function ActorGraph({ actor, colleagues, height, onSelectActor, a
   const maxCount = Math.max(...colleagues.map(c => c.count || 1), 1);
 
   const fetchSharedMovies = async (targetId) => {
-    const response = await fetch(
-      `https://api.themoviedb.org/3/person/${targetId}/movie_credits?api_key=${import.meta.env.VITE_TMDB_API_KEY}`
-    );
-    const targetCredits = await response.json();
-    const targetMovies = targetCredits.cast.map((m) => m.id);
+    const targetCredits = await getActorDetails(targetId);
+    const targetMovies = targetCredits.movie_credits.cast.map((m) => m.id);
   
     const shared = allMovies.filter((movie) => targetMovies.includes(movie.id));
     return shared;
@@ -29,15 +28,17 @@ export default function ActorGraph({ actor, colleagues, height, onSelectActor, a
 
   // Memoize node/link data only when actor/colleagues change
   const { nodes, links } = useMemo(() => {
+    
     if (!actor) return { nodes: [], links: [] };
 
     const imageBase = "https://image.tmdb.org/t/p/w92";
 
     const nodes = [
-      { id: actor.id, name: actor.name, main: true, fx: 0, fy: 0, image: actor.profile_path ? imageBase + actor.profile_path : null, },
-      ...colleagues.map((col, i) => {
+      { id: actor.id, name: actor.name, main: true, fx: 0, fy: 0, image: actor.profile_path ? imageBase + actor.profile_path : null, mov_count : allMovies.length },
+      ...colleagues.map((col) => {
         const angle = Math.random() * 2 * Math.PI;
         const dist = 200 + Math.random() * 100;
+        
         return {
           id: col.id,
           name: col.name,
@@ -45,10 +46,11 @@ export default function ActorGraph({ actor, colleagues, height, onSelectActor, a
           image: col.profile_path ? imageBase + col.profile_path : null,
           x: Math.cos(angle) * dist,
           y: Math.sin(angle) * dist,
+          mov_count : 0,
         };
       }),
     ];
-
+    
     const links = colleagues.map((col) => {
       const normalized = maxCount - col.count 
       const distance = (btwMinDistance + (btwMaxDistance - btwMinDistance) * Math.random()) * normalized + minDistance
@@ -60,7 +62,7 @@ export default function ActorGraph({ actor, colleagues, height, onSelectActor, a
     });
 
     return { nodes, links };
-  }, [actor, colleagues]);
+  }, [actor, colleagues, maxCount]);
 
   // Force simulation to reapply custom distances
   useEffect(() => {
@@ -68,7 +70,7 @@ export default function ActorGraph({ actor, colleagues, height, onSelectActor, a
       fgRef.current.d3Force("link").distance((link) => link.distance);
       fgRef.current.d3ReheatSimulation();
       fgRef.current.d3Force('collision', d3.forceCollide(node => {
-        const size = node.main ? 12 : Math.min(4 + (node.count || 1) * 3, 20);
+        const size = node.main ? Math.min(20, maxCount * 3 + 4) : Math.min(4 + (node.count || 1) * 3, 20);
         return size + 10; // add small buffer
       }));
     
@@ -78,15 +80,17 @@ export default function ActorGraph({ actor, colleagues, height, onSelectActor, a
   //if (!actor) return null;
   const imageCache = {};
   return (
-    <div style={{ width: "100%", height: height || 400 }}>
+    <div style={{ width: "100%", height: height || 400, backgroundColor: 'var(--bg-color)'}}>
       <ForceGraph2D
         ref={fgRef}
         graphData={{ nodes, links }}
         nodeLabel={(node) =>
           node.main
-            ? `${node.name} (Selected)`
+            ? `${node.name} ${node.mov_count} movies`
             : `${node.name} — ${node.count || 1} shared movie(s)`
         }
+        linkVisibility={false}
+        linkColor={() => (darkMode ? '#888' : '#555')} // or lighter for light mode
         onNodeClick={(node) => {
           // Cancel existing click if it's a double-click
           if (clickTimeout.current) {
@@ -107,15 +111,20 @@ export default function ActorGraph({ actor, colleagues, height, onSelectActor, a
                   const shared = await fetchSharedMovies(node.id);
                   setSelectedNode(node);
                   setSharedMovies(shared);
-                  setModalOpen(true);
+                  
+                } else {
+                  setSelectedNode(null);
+                  setSharedMovies(allMovies);
                 }
+
+                setModalOpen(true);
               })();
             }, 250); // ~250ms window for detecting double click
           }
         }}
-        backgroundColor="#f1faee"
+        
         nodePointerAreaPaint={(node, color, ctx) => {
-          const radius = node.main ? 12 : Math.min(4 + (node.count || 1) * 3, 20);
+          const radius = node.main ? Math.min(20, maxCount * 3 + 4) : Math.min(4 + (node.count || 1) * 3, 20);
           ctx.beginPath();
           ctx.arc(node.x, node.y, radius + 5, 0, 2 * Math.PI, false); // expand hit area
           ctx.fillStyle = color;
@@ -124,7 +133,6 @@ export default function ActorGraph({ actor, colleagues, height, onSelectActor, a
         
         nodeCanvasObject={(node, ctx) => {
           const radius = node.main ? 20 : Math.min(10 + (node.count || 1) * 2, 24);
-          const fontSize = 10;
         
           if (node.image) {
             if (!imageCache[node.image]) {

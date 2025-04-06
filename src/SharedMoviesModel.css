@@ -6,6 +6,8 @@
   }
   
   .modal-content {
+    background-color: var(--bg-color);
+    color: var(--text-color);
     position: fixed;
     top: 50%;
     left: 50%;
